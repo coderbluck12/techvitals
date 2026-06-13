@@ -9,7 +9,7 @@ export default function ArticleClientDetails() {
 
   useEffect(() => {
     // Detect Web Share API support
-    if (typeof navigator !== "undefined" && navigator.share) {
+    if (typeof navigator !== "undefined" && "share" in navigator) {
       setShareSupported(true);
     }
 
