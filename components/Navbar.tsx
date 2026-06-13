@@ -81,6 +81,12 @@ export default function Navbar() {
             >
               About
             </Link>
+            <Link
+              href="/write"
+              className="flex items-center gap-1 rounded-xl bg-teal-500/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-teal-600 hover:bg-teal-500 hover:text-white transition-all dark:bg-teal-900/20 dark:text-teal-400 dark:hover:bg-teal-500 dark:hover:text-white"
+            >
+              Write
+            </Link>
           </nav>
 
           {/* Search Bar */}
@@ -141,6 +147,13 @@ export default function Navbar() {
               className="block rounded-lg px-4 py-2.5 text-base hover:bg-neutral-50 hover:text-teal-600 dark:hover:bg-neutral-900 border-t border-neutral-100 pt-4 dark:border-neutral-900"
             >
               About
+            </Link>
+            <Link
+              href="/write"
+              onClick={() => setIsOpen(false)}
+              className="block rounded-lg px-4 py-2.5 text-base text-teal-600 bg-teal-500/10 hover:bg-teal-500 hover:text-white transition-all dark:bg-teal-900/20 dark:text-teal-400 font-bold tracking-wide uppercase text-center mt-2"
+            >
+              Write Article
             </Link>
           </nav>
         </div>

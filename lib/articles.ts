@@ -1,6 +1,6 @@
 import { Article } from "./types";
 
-export const articles: Article[] = [
+export const defaultArticles: Article[] = [
   {
     id: "1",
     slug: "revolutionary-crispr-treatment-cures-hereditary-blindness-in-clinical-trials",
@@ -232,29 +232,59 @@ AlphaFold 3 utilizes a diffusion-based architecture similar to AI image generato
   }
 ];
 
+// Read from LocalStorage if available, fallback to defaults
 export function getArticles(): Article[] {
-  return articles;
+  if (typeof window === "undefined") {
+    return defaultArticles;
+  }
+  const stored = localStorage.getItem("techvitals_custom_articles");
+  if (!stored) {
+    return defaultArticles;
+  }
+  try {
+    const custom: Article[] = JSON.parse(stored);
+    // Combine defaults and custom (custom first to show newer items at the top)
+    return [...custom, ...defaultArticles];
+  } catch (e) {
+    return defaultArticles;
+  }
+}
+
+export function saveArticle(article: Article): void {
+  if (typeof window === "undefined") return;
+  const stored = localStorage.getItem("techvitals_custom_articles");
+  let list: Article[] = [];
+  if (stored) {
+    try {
+      list = JSON.parse(stored);
+    } catch (e) {
+      list = [];
+    }
+  }
+  list.unshift(article);
+  localStorage.setItem("techvitals_custom_articles", JSON.stringify(list));
 }
 
 export function getArticleBySlug(slug: string): Article | undefined {
-  return articles.find((article) => article.slug === slug);
+  return getArticles().find((article) => article.slug === slug);
 }
 
 export function getFeaturedArticle(): Article | undefined {
-  return articles.find((article) => article.featured);
+  // Let the first featured article or the first in the whole list be the feature
+  const all = getArticles();
+  return all.find((article) => article.featured) || all[0];
 }
 
 export function getArticlesByCategory(categoryName: string): Article[] {
-  return articles.filter(
+  return getArticles().filter(
     (article) => article.category.toLowerCase() === categoryName.toLowerCase()
   );
 }
 
 export function getRelatedArticles(currentArticle: Article, limit = 3): Article[] {
-  return articles
+  return getArticles()
     .filter((article) => article.id !== currentArticle.id)
     .sort((a, b) => {
-      // Prioritize same category, then date
       const aSameCat = a.category === currentArticle.category ? 1 : 0;
       const bSameCat = b.category === currentArticle.category ? 1 : 0;
       if (aSameCat !== bSameCat) {
@@ -268,7 +298,7 @@ export function getRelatedArticles(currentArticle: Article, limit = 3): Article[
 export function searchArticles(query: string): Article[] {
   const q = query.toLowerCase().trim();
   if (!q) return [];
-  return articles.filter(
+  return getArticles().filter(
     (article) =>
       article.title.toLowerCase().includes(q) ||
       article.excerpt.toLowerCase().includes(q) ||
