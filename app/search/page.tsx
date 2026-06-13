@@ -1,18 +1,18 @@
 "use client";
 
-import { use } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { searchArticles } from "../../lib/articles";
 import NewsCard from "../../components/NewsCard";
 import PageLayout from "../../components/PageLayout";
 
-export default function SearchPage() {
+function SearchResultsGrid() {
   const searchParams = useSearchParams();
   const query = searchParams ? searchParams.get("q") || "" : "";
   const results = searchArticles(query);
 
   return (
-    <PageLayout>
+    <>
       <div className="mb-10 border-b border-neutral-200 pb-6 dark:border-neutral-800">
         <h1 className="text-4xl font-extrabold tracking-tight text-neutral-900 dark:text-neutral-500/90">
           Search Results
@@ -39,6 +39,20 @@ export default function SearchPage() {
           <p className="text-neutral-500 dark:text-neutral-400">No articles matched your search. Try another query.</p>
         </div>
       ) : null}
+    </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <PageLayout>
+      <Suspense fallback={
+        <div className="py-12 text-center text-neutral-500 dark:text-neutral-400">
+          Loading search content...
+        </div>
+      }>
+        <SearchResultsGrid />
+      </Suspense>
     </PageLayout>
   );
 }
