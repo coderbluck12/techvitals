@@ -81,12 +81,6 @@ export default function Navbar() {
             >
               About
             </Link>
-            <Link
-              href="/write"
-              className="flex items-center gap-1 rounded-xl bg-teal-500/10 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-teal-600 hover:bg-teal-500 hover:text-white transition-all dark:bg-teal-900/20 dark:text-teal-400 dark:hover:bg-teal-500 dark:hover:text-white"
-            >
-              Write
-            </Link>
           </nav>
 
           {/* Search Bar */}
