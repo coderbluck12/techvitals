@@ -5,6 +5,8 @@ import { getCategoryBySlug } from "../../../lib/types";
 import NewsCard from "../../../components/NewsCard";
 import PageLayout from "../../../components/PageLayout";
 
+export const dynamic = "force-dynamic";
+
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
 }

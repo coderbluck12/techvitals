@@ -9,6 +9,8 @@ import PageLayout from "../../../components/PageLayout";
 import CategoryBadge from "../../../components/CategoryBadge";
 import ArticleClientDetails from "./ArticleClientDetails";
 
+export const dynamic = "force-dynamic";
+
 interface ArticlePageProps {
   params: Promise<{ slug: string }>;
 }
