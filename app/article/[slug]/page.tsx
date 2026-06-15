@@ -29,8 +29,27 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     };
   }
   return {
-    title: `${article.title} | TechVitals`,
+    title: article.title,
     description: article.excerpt,
+    openGraph: {
+      title: article.title,
+      description: article.excerpt,
+      type: "article",
+      publishedTime: article.publishedAt,
+      authors: [article.author],
+      images: [
+        {
+          url: article.coverImage,
+          alt: article.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt,
+      images: [article.coverImage],
+    },
   };
 }
 

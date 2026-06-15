@@ -25,9 +25,16 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       title: "Category Not Found",
     };
   }
+  const title = `${categoryMeta.name} News`;
+  const description = `Read the latest articles, stories, and developments in ${categoryMeta.name} on TechVitals.`;
   return {
-    title: `${categoryMeta.name} News | TechVitals`,
-    description: `Latest articles, stories and updates in the field of ${categoryMeta.name}.`,
+    title,
+    description,
+    openGraph: {
+      title: `${title} | TechVitals`,
+      description,
+      type: "website",
+    },
   };
 }
 

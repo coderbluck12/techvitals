@@ -13,8 +13,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Techvitals - Tech and Health News At Your Fingertips",
-  description: "Techvitals - Stay Updated with Tech and Health News at Your Fingertips",
+  title: {
+    default: "TechVitals - Frontier Science, Tech & Health News",
+    template: "%s | TechVitals",
+  },
+  description: "Stay informed with the latest breakthroughs in medicine, biotechnology, artificial intelligence, and edge hardware.",
+  keywords: ["tech", "health", "biotech", "ai", "medicine", "gadgets", "science", "innovation"],
+  authors: [{ name: "TechVitals Team" }],
+  creator: "TechVitals",
+  metadataBase: new URL("https://www.techvitals.tech"),
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://www.techvitals.tech",
+    title: "TechVitals - Frontier Science, Tech & Health News",
+    description: "Stay informed with the latest breakthroughs in medicine, biotechnology, artificial intelligence, and edge hardware.",
+    siteName: "TechVitals",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TechVitals - Frontier Science, Tech & Health News",
+    description: "Stay informed with the latest breakthroughs in medicine, biotechnology, artificial intelligence, and edge hardware.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
