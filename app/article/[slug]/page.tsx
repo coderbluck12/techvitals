@@ -1,3 +1,4 @@
+import React from "react";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -74,6 +75,136 @@ function parseInlineStyles(text: string) {
   });
 }
 
+function parseArticleBody(body: string) {
+  const lines = body.split("\n");
+  const elements: React.ReactNode[] = [];
+  
+  let currentParagraphLines: string[] = [];
+  let currentListItems: string[] = [];
+  let currentListType: "ul" | "ol" | null = null;
+
+  const flushParagraph = (key: string | number) => {
+    if (currentParagraphLines.length > 0) {
+      elements.push(
+        <p key={`p-${key}`} className="mb-6 text-neutral-700 dark:text-neutral-300 leading-relaxed text-base sm:text-lg">
+          {currentParagraphLines.map((line, i) => (
+            <span key={i} className="block mb-2 last:mb-0">
+              {parseInlineStyles(line)}
+            </span>
+          ))}
+        </p>
+      );
+      currentParagraphLines = [];
+    }
+  };
+
+  const flushList = (key: string | number) => {
+    if (currentListItems.length > 0) {
+      if (currentListType === "ul") {
+        elements.push(
+          <ul key={`ul-${key}`} className="list-disc pl-5 my-4 space-y-1.5 text-neutral-700 dark:text-neutral-300">
+            {currentListItems.map((item, i) => (
+              <li key={i}>{parseInlineStyles(item)}</li>
+            ))}
+          </ul>
+        );
+      } else if (currentListType === "ol") {
+        elements.push(
+          <ol key={`ol-${key}`} className="list-decimal pl-5 my-4 space-y-2 text-neutral-700 dark:text-neutral-300">
+            {currentListItems.map((item, i) => (
+              <li key={i}>{parseInlineStyles(item)}</li>
+            ))}
+          </ol>
+        );
+      }
+      currentListItems = [];
+      currentListType = null;
+    }
+  };
+
+  const flushAll = (key: string | number) => {
+    flushParagraph(key);
+    flushList(key);
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+
+    // 1. Empty lines
+    if (trimmedLine === "") {
+      flushAll(i);
+      continue;
+    }
+
+    // 2. Headings (starts with ###)
+    if (trimmedLine.startsWith("###")) {
+      flushAll(i);
+      const headingText = trimmedLine.replace("###", "").trim();
+      elements.push(
+        <h3 key={`h-${i}`} className="text-xl font-bold mt-8 mb-4 text-neutral-900 dark:text-neutral-100">
+          {parseInlineStyles(headingText)}
+        </h3>
+      );
+      continue;
+    }
+
+    // 3. Image blocks
+    const imgMatch = trimmedLine.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      flushAll(i);
+      const alt = imgMatch[1];
+      const src = imgMatch[2];
+      elements.push(
+        <div key={`img-${i}`} className="my-8 overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-50 p-2 dark:border-neutral-800 dark:bg-neutral-900/50">
+          <img
+            src={src}
+            alt={alt || "Article image"}
+            className="w-full h-auto rounded-xl object-cover max-h-[500px]"
+            loading="lazy"
+          />
+          {alt && (
+            <span className="mt-2.5 block text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {alt}
+            </span>
+          )}
+        </div>
+      );
+      continue;
+    }
+
+    // 4. Bullet lists
+    if (trimmedLine.startsWith("-")) {
+      if (currentListType !== "ul") {
+        flushAll(i);
+        currentListType = "ul";
+      }
+      currentListItems.push(trimmedLine.slice(1).trim());
+      continue;
+    }
+
+    // 5. Numbered lists
+    const numMatch = trimmedLine.match(/^\d+\.\s*(.*)/);
+    if (numMatch) {
+      if (currentListType !== "ol") {
+        flushAll(i);
+        currentListType = "ol";
+      }
+      currentListItems.push(numMatch[1].trim());
+      continue;
+    }
+
+    // 6. Regular paragraph lines
+    flushList(i);
+    currentParagraphLines.push(line);
+  }
+
+  // Flush any remaining content
+  flushAll("end");
+
+  return elements;
+}
+
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
@@ -129,60 +260,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
         {/* Body Text */}
         <div className="prose prose-teal max-w-none dark:prose-invert">
-          {article.body.split("\n\n").map((paragraph, index) => {
-            if (paragraph.startsWith("###")) {
-              return (
-                <h3 key={index} className="text-xl font-bold mt-8 mb-4 text-neutral-900 dark:text-neutral-500/90">
-                  {paragraph.replace("###", "").trim()}
-                </h3>
-              );
-            }
-            if (paragraph.startsWith("-")) {
-              return (
-                <ul key={index} className="list-disc pl-5 my-4 space-y-1">
-                  {paragraph.split("\n").map((li, i) => (
-                    <li key={i}>{parseInlineStyles(li.replace("-", "").trim())}</li>
-                  ))}
-                </ul>
-              );
-            }
-            // Ordered lists or key value checks
-            if (/^\d+\./.test(paragraph)) {
-              return (
-                <ol key={index} className="list-decimal pl-5 my-4 space-y-2">
-                  {paragraph.split("\n").map((li, i) => (
-                    <li key={i}>{parseInlineStyles(li.replace(/^\d+\.\s*/, "").trim())}</li>
-                  ))}
-                </ol>
-              );
-            }
-            // Markdown image block parser: ![Alt text](url)
-            const imgMatch = paragraph.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
-            if (imgMatch) {
-              const alt = imgMatch[1];
-              const src = imgMatch[2];
-              return (
-                <div key={index} className="my-8 overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-50 p-2 dark:border-neutral-800 dark:bg-neutral-900/50">
-                  <img
-                    src={src}
-                    alt={alt || "Article image"}
-                    className="w-full h-auto rounded-xl object-cover max-h-[500px]"
-                    loading="lazy"
-                  />
-                  {alt && (
-                    <span className="mt-2.5 block text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                      {alt}
-                    </span>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <p key={index} className="mb-6 text-neutral-700 dark:text-neutral-300 leading-relaxed text-base sm:text-lg">
-                {parseInlineStyles(paragraph)}
-              </p>
-            );
-          })}
+          {parseArticleBody(article.body)}
         </div>
       </article>
 
