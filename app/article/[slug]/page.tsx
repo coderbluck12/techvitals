@@ -53,6 +53,27 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
   };
 }
 
+function parseInlineStyles(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-bold text-neutral-900 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <em key={index} className="italic text-neutral-800 dark:text-neutral-200">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+}
+
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
@@ -120,7 +141,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               return (
                 <ul key={index} className="list-disc pl-5 my-4 space-y-1">
                   {paragraph.split("\n").map((li, i) => (
-                    <li key={i}>{li.replace("-", "").trim()}</li>
+                    <li key={i}>{parseInlineStyles(li.replace("-", "").trim())}</li>
                   ))}
                 </ul>
               );
@@ -130,7 +151,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               return (
                 <ol key={index} className="list-decimal pl-5 my-4 space-y-2">
                   {paragraph.split("\n").map((li, i) => (
-                    <li key={i}>{li.replace(/^\d+\.\s*/, "").trim()}</li>
+                    <li key={i}>{parseInlineStyles(li.replace(/^\d+\.\s*/, "").trim())}</li>
                   ))}
                 </ol>
               );
@@ -158,7 +179,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             }
             return (
               <p key={index} className="mb-6 text-neutral-700 dark:text-neutral-300 leading-relaxed text-base sm:text-lg">
-                {paragraph}
+                {parseInlineStyles(paragraph)}
               </p>
             );
           })}
