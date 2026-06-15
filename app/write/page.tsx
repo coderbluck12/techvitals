@@ -9,6 +9,8 @@ import { saveArticle } from "../../lib/articles";
 export default function WritePage() {
   const router = useRouter();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const bodyFileInputRef = useRef<HTMLInputElement>(null);
   
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -18,14 +20,38 @@ export default function WritePage() {
   const [author, setAuthor] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingBody, setIsUploadingBody] = useState(false);
 
-  const handleInsertImage = () => {
-    const url = prompt("Enter the image URL:");
-    if (!url) return;
-    const caption = prompt("Enter an optional image caption (or leave blank):") || "";
-    
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      throw new Error("Cloudinary cloud name is not configured. Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME in your environment variables.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "zeststore_products");
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || "Failed to upload image to Cloudinary");
+    }
+
+    const data = await response.json();
+    return data.secure_url;
+  };
+
+  const insertImageMarkdown = (url: string, caption: string) => {
     const markdownImage = `\n\n![${caption}](${url})\n\n`;
-    
     const textarea = bodyRef.current;
     if (textarea) {
       const start = textarea.selectionStart;
@@ -33,13 +59,59 @@ export default function WritePage() {
       const text = textarea.value;
       const newBody = text.substring(0, start) + markdownImage + text.substring(end);
       setBody(newBody);
-      
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + markdownImage.length, start + markdownImage.length);
       }, 0);
     } else {
       setBody((prev) => prev + markdownImage);
+    }
+  };
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    setError("");
+    try {
+      const url = await uploadToCloudinary(file);
+      setCoverImage(url);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload cover image. Please try again.");
+    } finally {
+      setIsUploadingCover(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleBodyFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingBody(true);
+    setError("");
+    try {
+      const url = await uploadToCloudinary(file);
+      const caption = prompt("Enter an optional image caption (or leave blank):") || "";
+      insertImageMarkdown(url, caption);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingBody(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleInsertImage = () => {
+    const shouldUpload = confirm("Do you want to upload an image from your computer?\n\n(Select 'Cancel' if you want to enter an image URL instead)");
+    if (shouldUpload) {
+      bodyFileInputRef.current?.click();
+    } else {
+      const url = prompt("Enter the image URL:");
+      if (!url) return;
+      const caption = prompt("Enter an optional image caption (or leave blank):") || "";
+      insertImageMarkdown(url, caption);
     }
   };
 
@@ -155,15 +227,47 @@ export default function WritePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-2">
-              Cover Image URL
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500">
+                Cover Image URL
+              </label>
+              <button
+                type="button"
+                onClick={() => coverFileInputRef.current?.click()}
+                disabled={isUploadingCover}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isUploadingCover ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="animate-spin h-3.5 w-3.5 text-neutral-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Upload Cover
+                  </>
+                )}
+              </button>
+            </div>
             <input
               type="url"
               value={coverImage}
               onChange={(e) => setCoverImage(e.target.value)}
               placeholder="e.g. https://images.unsplash.com/photo-..."
               className="block w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+            />
+            <input
+              type="file"
+              ref={coverFileInputRef}
+              onChange={handleCoverFileChange}
+              accept="image/*"
+              className="hidden"
             />
           </div>
 
@@ -189,12 +293,25 @@ export default function WritePage() {
               <button
                 type="button"
                 onClick={handleInsertImage}
-                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                disabled={isUploadingBody}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                Insert Image
+                {isUploadingBody ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="animate-spin h-3.5 w-3.5 text-neutral-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    Insert Image
+                  </>
+                )}
               </button>
             </div>
             <textarea
@@ -205,6 +322,13 @@ export default function WritePage() {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write the body of your article here. Use blank lines for paragraphs. Use ### for subheadings."
               className="block w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+            />
+            <input
+              type="file"
+              ref={bodyFileInputRef}
+              onChange={handleBodyFileChange}
+              accept="image/*"
+              className="hidden"
             />
           </div>
 
