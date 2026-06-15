@@ -142,13 +142,6 @@ export default function Navbar() {
             >
               About
             </Link>
-            <Link
-              href="/write"
-              onClick={() => setIsOpen(false)}
-              className="block rounded-lg px-4 py-2.5 text-base text-teal-600 bg-teal-500/10 hover:bg-teal-500 hover:text-white transition-all dark:bg-teal-900/20 dark:text-teal-400 font-bold tracking-wide uppercase text-center mt-2"
-            >
-              Write Article
-            </Link>
           </nav>
         </div>
       )}

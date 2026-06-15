@@ -1,4 +1,6 @@
 import { Article } from "./types";
+import { db } from "./firebase";
+import { collection, getDocs, setDoc, doc, query, orderBy } from "firebase/firestore";
 
 export const defaultArticles: Article[] = [
   {
@@ -232,57 +234,123 @@ AlphaFold 3 utilizes a diffusion-based architecture similar to AI image generato
   }
 ];
 
-// Read from LocalStorage if available, fallback to defaults
-export function getArticles(): Article[] {
-  if (typeof window === "undefined") {
-    return defaultArticles;
-  }
-  const stored = localStorage.getItem("techvitals_custom_articles");
-  if (!stored) {
-    return defaultArticles;
-  }
+// Read from Firebase Firestore, fallback to local defaults if Firebase is not configured
+export async function getArticles(): Promise<Article[]> {
   try {
-    const custom: Article[] = JSON.parse(stored);
-    // Combine defaults and custom (custom first to show newer items at the top)
-    return [...custom, ...defaultArticles];
-  } catch (e) {
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("techvitals_custom_articles");
+        if (stored) {
+          try {
+            const custom: Article[] = JSON.parse(stored);
+            return [...custom, ...defaultArticles];
+          } catch (e) {
+            return defaultArticles;
+          }
+        }
+      }
+      return defaultArticles;
+    }
+    const q = query(collection(db, "articles"), orderBy("publishedAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    const articles: Article[] = [];
+    querySnapshot.forEach((docSnap) => {
+      articles.push({ id: docSnap.id, ...docSnap.data() } as Article);
+    });
+
+    if (articles.length === 0) {
+      // Seed Firestore with defaults if empty
+      for (const art of defaultArticles) {
+        await setDoc(doc(db, "articles", art.id), {
+          slug: art.slug,
+          title: art.title,
+          excerpt: art.excerpt,
+          body: art.body,
+          coverImage: art.coverImage,
+          category: art.category,
+          author: art.author,
+          publishedAt: art.publishedAt,
+          readTime: art.readTime,
+          featured: art.featured || false,
+        });
+      }
+      return defaultArticles;
+    }
+    return articles;
+  } catch (error) {
+    console.error("Firebase error, falling back to local defaults:", error);
+    // Local storage fallback
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("techvitals_custom_articles");
+      if (stored) {
+        try {
+          const custom: Article[] = JSON.parse(stored);
+          return [...custom, ...defaultArticles];
+        } catch (e) {
+          return defaultArticles;
+        }
+      }
+    }
     return defaultArticles;
   }
 }
 
-export function saveArticle(article: Article): void {
-  if (typeof window === "undefined") return;
-  const stored = localStorage.getItem("techvitals_custom_articles");
-  let list: Article[] = [];
-  if (stored) {
-    try {
-      list = JSON.parse(stored);
-    } catch (e) {
-      list = [];
+export async function saveArticle(article: Article): Promise<void> {
+  try {
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("techvitals_custom_articles");
+        let list: Article[] = [];
+        if (stored) {
+          try {
+            list = JSON.parse(stored);
+          } catch (e) {
+            list = [];
+          }
+        }
+        list.unshift(article);
+        localStorage.setItem("techvitals_custom_articles", JSON.stringify(list));
+      }
+      return;
     }
+    await setDoc(doc(db, "articles", article.id), {
+      slug: article.slug,
+      title: article.title,
+      excerpt: article.excerpt,
+      body: article.body,
+      coverImage: article.coverImage,
+      category: article.category,
+      author: article.author,
+      publishedAt: article.publishedAt,
+      readTime: article.readTime,
+      featured: article.featured || false,
+    });
+  } catch (error) {
+    console.error("Error saving article to Firebase:", error);
+    throw error;
   }
-  list.unshift(article);
-  localStorage.setItem("techvitals_custom_articles", JSON.stringify(list));
 }
 
-export function getArticleBySlug(slug: string): Article | undefined {
-  return getArticles().find((article) => article.slug === slug);
+export async function getArticleBySlug(slug: string): Promise<Article | undefined> {
+  const all = await getArticles();
+  return all.find((article) => article.slug === slug);
 }
 
-export function getFeaturedArticle(): Article | undefined {
-  // Let the first featured article or the first in the whole list be the feature
-  const all = getArticles();
+export async function getFeaturedArticle(): Promise<Article | undefined> {
+  const all = await getArticles();
   return all.find((article) => article.featured) || all[0];
 }
 
-export function getArticlesByCategory(categoryName: string): Article[] {
-  return getArticles().filter(
+export async function getArticlesByCategory(categoryName: string): Promise<Article[]> {
+  const all = await getArticles();
+  return all.filter(
     (article) => article.category.toLowerCase() === categoryName.toLowerCase()
   );
 }
 
-export function getRelatedArticles(currentArticle: Article, limit = 3): Article[] {
-  return getArticles()
+export async function getRelatedArticles(currentArticle: Article, limit = 3): Promise<Article[]> {
+  const all = await getArticles();
+  return all
     .filter((article) => article.id !== currentArticle.id)
     .sort((a, b) => {
       const aSameCat = a.category === currentArticle.category ? 1 : 0;
@@ -295,10 +363,11 @@ export function getRelatedArticles(currentArticle: Article, limit = 3): Article[
     .slice(0, limit);
 }
 
-export function searchArticles(query: string): Article[] {
-  const q = query.toLowerCase().trim();
+export async function searchArticles(queryStr: string): Promise<Article[]> {
+  const q = queryStr.toLowerCase().trim();
   if (!q) return [];
-  return getArticles().filter(
+  const all = await getArticles();
+  return all.filter(
     (article) =>
       article.title.toLowerCase().includes(q) ||
       article.excerpt.toLowerCase().includes(q) ||

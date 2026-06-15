@@ -1,15 +1,36 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { searchArticles } from "../../lib/articles";
+import { Article } from "../../lib/types";
 import NewsCard from "../../components/NewsCard";
 import PageLayout from "../../components/PageLayout";
 
 function SearchResultsGrid() {
   const searchParams = useSearchParams();
   const query = searchParams ? searchParams.get("q") || "" : "";
-  const results = searchArticles(query);
+  const [results, setResults] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function runSearch() {
+      if (!query) {
+        setResults([]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await searchArticles(query);
+        setResults(res);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    runSearch();
+  }, [query]);
 
   return (
     <>
@@ -28,7 +49,12 @@ function SearchResultsGrid() {
         )}
       </div>
 
-      {query && results.length > 0 ? (
+      {loading ? (
+        <div className="py-20 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-teal-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite] dark:border-teal-400" />
+          <p className="mt-4 text-sm font-medium text-neutral-500 dark:text-neutral-400">Searching stories...</p>
+        </div>
+      ) : query && results.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {results.map((article) => (
             <NewsCard key={article.id} article={article} />

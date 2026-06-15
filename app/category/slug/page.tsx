@@ -39,7 +39,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound();
   }
 
-  const categoryArticles = getArticlesByCategory(categoryMeta.name);
+  const categoryArticles = await getArticlesByCategory(categoryMeta.name);
 
   return (
     <PageLayout>

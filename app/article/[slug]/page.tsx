@@ -14,14 +14,15 @@ interface ArticlePageProps {
 
 export async function generateStaticParams() {
   const { getArticles } = await import("../../../lib/articles");
-  return getArticles().map((article) => ({
+  const articles = await getArticles();
+  return articles.map((article) => ({
     slug: article.slug,
   }));
 }
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug);
   if (!article) {
     return {
       title: "Article Not Found",
@@ -35,13 +36,13 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
-  const article = getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug);
 
   if (!article) {
     notFound();
   }
 
-  const relatedArticles = getRelatedArticles(article);
+  const relatedArticles = await getRelatedArticles(article);
   const formattedDate = new Date(article.publishedAt).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -113,6 +114,27 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                     <li key={i}>{li.replace(/^\d+\.\s*/, "").trim()}</li>
                   ))}
                 </ol>
+              );
+            }
+            // Markdown image block parser: ![Alt text](url)
+            const imgMatch = paragraph.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+            if (imgMatch) {
+              const alt = imgMatch[1];
+              const src = imgMatch[2];
+              return (
+                <div key={index} className="my-8 overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-50 p-2 dark:border-neutral-800 dark:bg-neutral-900/50">
+                  <img
+                    src={src}
+                    alt={alt || "Article image"}
+                    className="w-full h-auto rounded-xl object-cover max-h-[500px]"
+                    loading="lazy"
+                  />
+                  {alt && (
+                    <span className="mt-2.5 block text-center text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                      {alt}
+                    </span>
+                  )}
+                </div>
               );
             }
             return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import PageLayout from "../../components/PageLayout";
 import { Category, CATEGORIES } from "../../lib/types";
@@ -8,6 +8,7 @@ import { saveArticle } from "../../lib/articles";
 
 export default function WritePage() {
   const router = useRouter();
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   
   const [title, setTitle] = useState("");
   const [excerpt, setExcerpt] = useState("");
@@ -18,7 +19,31 @@ export default function WritePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInsertImage = () => {
+    const url = prompt("Enter the image URL:");
+    if (!url) return;
+    const caption = prompt("Enter an optional image caption (or leave blank):") || "";
+    
+    const markdownImage = `\n\n![${caption}](${url})\n\n`;
+    
+    const textarea = bodyRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const newBody = text.substring(0, start) + markdownImage + text.substring(end);
+      setBody(newBody);
+      
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + markdownImage.length, start + markdownImage.length);
+      }, 0);
+    } else {
+      setBody((prev) => prev + markdownImage);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -54,7 +79,7 @@ export default function WritePage() {
     };
 
     try {
-      saveArticle(newArticle);
+      await saveArticle(newArticle);
       // Redirect to homepage to see it appear in real-time
       router.push("/");
     } catch (err) {
@@ -157,11 +182,24 @@ export default function WritePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 mb-2">
-              Content / Article Body <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500">
+                Content / Article Body <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleInsertImage}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                Insert Image
+              </button>
+            </div>
             <textarea
               required
+              ref={bodyRef}
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
