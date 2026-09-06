@@ -139,15 +139,50 @@ function parseArticleBody(body: string) {
       continue;
     }
 
-    // 2. Headings (starts with ###)
-    if (trimmedLine.startsWith("###")) {
+    // 2. Headings (# to ######)
+    const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
       flushAll(i);
-      const headingText = trimmedLine.replace("###", "").trim();
-      elements.push(
-        <h3 key={`h-${i}`} className="text-xl font-bold mt-8 mb-4 text-neutral-900 dark:text-neutral-100">
-          {parseInlineStyles(headingText)}
-        </h3>
-      );
+      const level = headingMatch[1].length;
+      const headingText = headingMatch[2].trim();
+
+      if (level === 1) {
+        elements.push(
+          <h1 key={`h-${i}`} className="text-3xl font-extrabold mt-10 mb-4 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h1>
+        );
+      } else if (level === 2) {
+        elements.push(
+          <h2 key={`h-${i}`} className="text-2xl font-bold mt-8 mb-4 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h2>
+        );
+      } else if (level === 3) {
+        elements.push(
+          <h3 key={`h-${i}`} className="text-xl font-bold mt-8 mb-4 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h3>
+        );
+      } else if (level === 4) {
+        elements.push(
+          <h4 key={`h-${i}`} className="text-lg font-bold mt-6 mb-3 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h4>
+        );
+      } else if (level === 5) {
+        elements.push(
+          <h5 key={`h-${i}`} className="text-base font-bold mt-6 mb-2 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h5>
+        );
+      } else {
+        elements.push(
+          <h6 key={`h-${i}`} className="text-sm font-bold uppercase tracking-wider mt-6 mb-2 text-neutral-900 dark:text-neutral-100">
+            {parseInlineStyles(headingText)}
+          </h6>
+        );
+      }
       continue;
     }
 

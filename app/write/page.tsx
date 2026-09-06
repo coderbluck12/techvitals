@@ -320,7 +320,7 @@ export default function WritePage() {
               rows={8}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Write the body of your article here. Use blank lines for paragraphs. Use ### for subheadings."
+              placeholder="Write the body of your article here. Use blank lines for paragraphs. Use ## or ### for headings."
               className="block w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
             />
             <input
